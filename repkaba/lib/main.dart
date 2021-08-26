@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +7,7 @@ import 'package:repkaba/green_page.dart';
 import 'package:repkaba/red_page.dart';
 import 'package:webview_flutter/platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'cache_data.dart';
+import 'package:http/http.dart' as http;
 
 
 String webLink = "https://reprezentacija.ba/";
@@ -51,14 +53,19 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   late WebViewController controller;
-
-
-
+  late String deviceToken;
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
+    FirebaseMessaging.instance.getToken().then((token) {
+      print('token');
+      print(token);
+      setState(() {
+        deviceToken = token!;
+      });
+    });
     //gives message on which user taps, open app from terminated state
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if(message != null){
@@ -97,10 +104,28 @@ class _MyHomePageState extends State<MyHomePage> {
               javascriptMode: JavascriptMode.unrestricted,
               initialUrl: webLink,
                 onWebViewCreated: (WebViewController webViewController) {
-                  controller = webViewController;}
+                  controller = webViewController;
+              }
             ),
         ),
       ),
     );
   }
+}
+
+Future storeToken(token) async {
+  http.Response response = await http.post(
+    Uri.parse('https://alkaris.com/api/login-system/check-for-user-data'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-CSRF-TOKEN': ''
+    },
+    body: jsonEncode(<String, String>{
+      'token': '1'
+    }),
+  );
+}
+
+void printToken(token){
+  print(token);
 }
