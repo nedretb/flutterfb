@@ -1,19 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:repkaba/green_page.dart';
-import 'package:repkaba/red_page.dart';
-import 'package:webview_flutter/platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 String webLink = "https://reprezentacija.ba/";
 late String deviceToken;
-late bool connResult;
+bool connResult = true;
 
 var connectivityResult = await(Connectivity().checkConnectivity());
 
@@ -27,7 +25,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(backgroundHandler);
-  connResult = await checkInternetConnection();
+  checkInternetConnection();
   runApp(MyApp());
 }
 
@@ -125,19 +123,62 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: SafeArea(
           child: FutureBuilder(
             future: checkInternetConnection(),
             builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot){
+              const period= const Duration(seconds:1);
+              new Timer.periodic(period, (Timer t) => checkInternetConnection());
               if(connResult == true){
-                return WebView(
-                    javascriptMode: JavascriptMode.unrestricted,
-                    initialUrl: webLink,
-                    onWebViewCreated: (WebViewController webViewController) {
-                      controller = webViewController;
-                    });
-              };
+                return WillPopScope(
+                    child: WebView(
+                        javascriptMode: JavascriptMode.unrestricted,
+                        initialUrl: webLink,
+                        onWebViewCreated: (WebViewController webViewController) {
+                          controller = webViewController;
+                        },
+                        navigationDelegate: (NavigationRequest request){
+                          checkInternetConnection();
+                          if(connResult == true){
+                            return NavigationDecision.navigate;
+                          }
+                          else{
+                            return NavigationDecision.prevent;
+                            // Center(
+                            //   child: Text(
+                            //     'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
+                            //     textAlign: TextAlign.center,
+                            //     style: TextStyle(
+                            //       // your text
+                            //       fontFamily: 'Aleo',
+                            //       fontStyle: FontStyle.normal,
+                            //       fontWeight: FontWeight.bold,
+                            //       fontSize: 25.0,
+                            //     ),
+                            //   ),
+                            // );
+                          }
+                },),
+                    onWillPop: onWillPop);
+
+              }
+              else{
+                return Center(
+                  child: Text(
+                    'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      // your text
+                      fontFamily: 'Aleo',
+                      fontStyle: FontStyle.normal,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 25.0,
+                    ),
+                  ),
+                );
+              }
             },
           ),
         ),
@@ -146,40 +187,49 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _updateConnectionStatus() async {
-    var res = await checkInternetConnection();
+    // var res = await checkInternetConnection();
     // print(res);
-    // setState(() {
-    //   // _connectionStatus = result;
-    //   if(res == true){
-    //     content = MaterialApp(
-    //       home: Scaffold(
-    //         body: SafeArea(
-    //           child: WebView(
-    //               javascriptMode: JavascriptMode.unrestricted,
-    //               initialUrl: webLink,
-    //               onWebViewCreated: (WebViewController webViewController) {
-    //                 controller = webViewController;
-    //               }),
-    //         ),
-    //       ),
-    //     );
-    //   }
-    //   else{
-    //     content =  MaterialApp(
-    //       home: Scaffold(
-    //         backgroundColor: Colors.blue,
-    //         body: SafeArea(
-    //             child: Center(
-    //               child: Text(
-    //                 'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
-    //                 textAlign: TextAlign.center,
-    //                 style: TextStyle(fontSize: 15, color: Colors.white),
-    //               ),
-    //             )),
-    //       ),
-    //     );
-    //   }
-    // });
+    var res = true;
+    setState(() {
+      // _connectionStatus = result;
+      if(res == true){
+        content = MaterialApp(
+          home: Scaffold(
+            body: SafeArea(
+              child: WebView(
+                  javascriptMode: JavascriptMode.unrestricted,
+                  initialUrl: webLink,
+                  onWebViewCreated: (WebViewController webViewController) {
+                    controller = webViewController;
+                  }),
+            ),
+          ),
+        );
+      }
+      else{
+        content =  MaterialApp(
+          home: Scaffold(
+            body: SafeArea(
+                child: Center(
+                  child: Text(
+                    'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: Colors.white),
+                  ),
+                ),
+            ),
+          ),
+        );
+      }
+    });
+  }
+  Future<bool> onWillPop() async {
+    if (await controller.canGoBack()) {
+      controller.goBack();
+      return Future.value(false);
+    } else {
+      return Future.value(true);
+    }
   }
 }
 
@@ -193,14 +243,13 @@ Future storeToken(token) async {
   );
 }
 
-Future<bool> checkInternetConnection() async {
+Future<void> checkInternetConnection() async {
   try {
-    final result = await InternetAddress.lookup('example.com');
+    final result = await InternetAddress.lookup('google.com');
     if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-      return true;
+      connResult = true;
     }
-    return true;
   } on SocketException catch (_) {
-    return false;
+    connResult = false;
   }
 }

@@ -1,211 +1,93 @@
-import 'dart:convert';
-import 'dart:io';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:repkaba/green_page.dart';
-import 'package:repkaba/red_page.dart';
-import 'package:webview_flutter/platform_interface.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
-
-String webLink = "https://reprezentacija.ba/";
-late String deviceToken;
-late bool connResult;
-
-var connectivityResult = await(Connectivity().checkConnectivity());
-
-await(Future<ConnectivityResult> checkConnectivity) {}
-
-Future<void> backgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+bool connectionStatus = true;
+Future check() async {
+  try {
+    final result = await InternetAddress.lookup('google.com');
+    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+      connectionStatus = true;
+    }
+  } on SocketException catch (_) {
+    connectionStatus = false;
+  }
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(backgroundHandler);
-  connResult = await checkInternetConnection();
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+class _BackButtonState extends State<BackButton> {
+  DateTime backbuttonpressedTime;
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: MyHomePage(
-        title: 'Flutter demo home page',
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: Size(double.infinity, 0),
+        child: AppBar(
+          title: Text(""),
+          backgroundColor: Colors.deepPurple,
+        ),
       ),
+      body: FutureBuilder(
+          future: check(), // a previously-obtained Future or null
+          builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+            if (connectionStatus == true) {
+              return WillPopScope(
+                onWillPop: onWillPop,
+                child: WebviewScaffold(
+                  url: 'https://www.theonlineindia.co.in',
+                  hidden: true,
+                  initialChild: Container(
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                          valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.deepPurple)),
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Container(
+                        child: Text('No internet connection !!!',
+                            style: TextStyle(
+                              // your text
+                              fontFamily: 'Aleo',
+                              fontStyle: FontStyle.normal,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 25.0,
+                            )),
+                      ),
+                      /* RaisedButton(
+                    onPressed: () {
+                      setState(() {});
+                    },
+                    color: Color(0xFF673AB7),
+                    textColor: Colors.white,
+                    child: Text('Refresh'),
+                  ), */
+                      // your button beneath text
+                    ],
+                  ));
+            }
+          }),
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, required this.title}) : super(key: key);
+  Future<bool> onWillPop() async {
+    DateTime currentTime = DateTime.now();
 
-  final String title;
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  late WebViewController controller;
-
-  late Widget content = MaterialApp(
-    home: Scaffold(
-      body: SafeArea(
-        child: WebView(
-            javascriptMode: JavascriptMode.unrestricted,
-            initialUrl: webLink,
-            onWebViewCreated: (WebViewController webViewController) {
-              controller = webViewController;
-            }),
-      ),
-    ),
-  );
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-
-    FirebaseMessaging.instance.getToken().then((token) {
-      setState(() {
-        deviceToken = token!;
-        // print(deviceToken);
-        // storeToken(3);
-      });
-
-      print('-----------------main--------------------------------------');
-      print(deviceToken);
-      print('------------------main-----------------------------------------');
-      storeToken(deviceToken);
-    });
-    //gives message on which user taps, open app from terminated state
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) {
-        print(message);
-        // final newLink = message.data['link'];
-        webLink = message.data['link'];
-      }
-    });
-
-    //app working in foreground
-    FirebaseMessaging.onMessage.listen((message) {
-      if (message.notification != null) {
-        // print(message.notification!.body);
-        // print(message.notification!.title);
-      }
-    });
-
-    //when the app is in background but opened and user taps on notification
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      print(message.notification!.body);
-      final newLink = message.data['link'];
-      // Navigator.of(context).pop(GreenPage(newLink));
-      setState(() {
-        controller.loadUrl(newLink);
-      });
-    });
-  }
-
-  Future<void> _updateConnectionStatus(ConnectivityResult result) async {
-    var res = await checkInternetConnection();
-    print(res);
-    setState(() {
-      // _connectionStatus = result;
-      if(res == true){
-        content = MaterialApp(
-          home: Scaffold(
-            body: SafeArea(
-              child: WebView(
-                  javascriptMode: JavascriptMode.unrestricted,
-                  initialUrl: webLink,
-                  onWebViewCreated: (WebViewController webViewController) {
-                    controller = webViewController;
-                  }),
-            ),
-          ),
-        );
-      }
-      else{
-        content =  MaterialApp(
-          home: Scaffold(
-            backgroundColor: Colors.blue,
-            body: SafeArea(
-                child: Center(
-                  child: Text(
-                    'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: Colors.white),
-                  ),
-                )),
-          ),
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (connResult == false) {
-      print('no internet');
-      MaterialApp(
-        home: Scaffold(
-          backgroundColor: Colors.blue,
-          body: SafeArea(
-              child: Center(
-                child: Text(
-                  'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.white),
-                ),
-              )),
-        ),
-      );
-      return content;
-    } else {
-      print('there is internet');
-      content =MaterialApp(
-        home: Scaffold(
-          body: SafeArea(
-            child: WebView(
-                javascriptMode: JavascriptMode.unrestricted,
-                initialUrl: webLink,
-                onWebViewCreated: (WebViewController webViewController) {
-                  controller = webViewController;
-                }),
-          ),
-        ),
-      );
-      return content;
+    //ifbackbuttonhasnotbeenpreedOrToasthasbeenclosed
+    //Statement 1 Or statement2
+    bool backButton = backbuttonpressedTime == null ||
+        currentTime.difference(backbuttonpressedTime) > Duration(seconds: 2);
+    if (backButton) {
+      backbuttonpressedTime = currentTime;
+      Fluttertoast.showToast(
+          msg: "Double tap to exit the app",
+          backgroundColor: Colors.deepPurple,
+          textColor: Colors.white);
+      return false;
     }
-  }
-}
-
-Future storeToken(token) async {
-  http.Response response = await http.post(
-    Uri.parse('http://api.europlac-nekretnine.com/product/create.php'),
-    headers: <String, String>{
-      'Content-Type': 'application/json; charset=UTF-8'
-    },
-    body: jsonEncode(<String, String>{'token': token}),
-  );
-}
-
-Future<bool> checkInternetConnection() async {
-  try {
-    final result = await InternetAddress.lookup('example.com');
-    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-      return true;
-    }
+    exit(0);
     return true;
-  } on SocketException catch (_) {
-    return false;
   }
 }
