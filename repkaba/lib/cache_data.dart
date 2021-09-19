@@ -41,7 +41,6 @@ class MyApp extends StatelessWidget {
       home: MyHomePage(
         title: 'Flutter demo home page',
       ),
-      routes: {"red": (_) => RedPage(), "green": (_) => GreenPage()},
     );
   }
 }

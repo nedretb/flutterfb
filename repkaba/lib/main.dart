@@ -46,7 +46,6 @@ class _MyAppState extends State<MyApp> {
       home: MyHomePage(
         title: 'Flutter demo home page',
       ),
-      routes: {"red": (_) => RedPage(), "green": (_) => GreenPage()},
     );
   }
 }
@@ -63,6 +62,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late WebViewController controller;
 
+  String text = 'hi there';
+  final Connectivity _connectivity = Connectivity();
   late Widget content = MaterialApp(
     home: Scaffold(
       body: SafeArea(
@@ -75,6 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     ),
   );
+
   @override
   void initState() {
     // TODO: implement initState
@@ -87,9 +89,9 @@ class _MyHomePageState extends State<MyHomePage> {
         // storeToken(3);
       });
 
-      print('-----------------main--------------------------------------');
-      print(deviceToken);
-      print('------------------main-----------------------------------------');
+      // print('-----------------main--------------------------------------');
+      // print(deviceToken);
+      // print('------------------main-----------------------------------------');
       storeToken(deviceToken);
     });
     //gives message on which user taps, open app from terminated state
@@ -120,77 +122,64 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Future<void> _updateConnectionStatus(ConnectivityResult result) async {
-    var res = await checkInternetConnection();
-    print(res);
-    setState(() {
-      // _connectionStatus = result;
-      if(res == true){
-        content = MaterialApp(
-          home: Scaffold(
-            body: SafeArea(
-              child: WebView(
-                  javascriptMode: JavascriptMode.unrestricted,
-                  initialUrl: webLink,
-                  onWebViewCreated: (WebViewController webViewController) {
-                    controller = webViewController;
-                  }),
-            ),
-          ),
-        );
-      }
-      else{
-        content =  MaterialApp(
-          home: Scaffold(
-            backgroundColor: Colors.blue,
-            body: SafeArea(
-                child: Center(
-                  child: Text(
-                    'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: Colors.white),
-                  ),
-                )),
-          ),
-        );
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (connResult == false) {
-      print('no internet');
-      MaterialApp(
-        home: Scaffold(
-          backgroundColor: Colors.blue,
-          body: SafeArea(
-              child: Center(
-                child: Text(
-                  'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: Colors.white),
-                ),
-              )),
-        ),
-      );
-      return content;
-    } else {
-      print('there is internet');
-      content =MaterialApp(
-        home: Scaffold(
-          body: SafeArea(
-            child: WebView(
-                javascriptMode: JavascriptMode.unrestricted,
-                initialUrl: webLink,
-                onWebViewCreated: (WebViewController webViewController) {
-                  controller = webViewController;
-                }),
+    return MaterialApp(
+      home: Scaffold(
+        body: SafeArea(
+          child: FutureBuilder(
+            future: checkInternetConnection(),
+            builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot){
+              if(connResult == true){
+                return WebView(
+                    javascriptMode: JavascriptMode.unrestricted,
+                    initialUrl: webLink,
+                    onWebViewCreated: (WebViewController webViewController) {
+                      controller = webViewController;
+                    });
+              };
+            },
           ),
         ),
-      );
-      return content;
-    }
+      ),
+    );
+  }
+
+  Future<void> _updateConnectionStatus() async {
+    var res = await checkInternetConnection();
+    // print(res);
+    // setState(() {
+    //   // _connectionStatus = result;
+    //   if(res == true){
+    //     content = MaterialApp(
+    //       home: Scaffold(
+    //         body: SafeArea(
+    //           child: WebView(
+    //               javascriptMode: JavascriptMode.unrestricted,
+    //               initialUrl: webLink,
+    //               onWebViewCreated: (WebViewController webViewController) {
+    //                 controller = webViewController;
+    //               }),
+    //         ),
+    //       ),
+    //     );
+    //   }
+    //   else{
+    //     content =  MaterialApp(
+    //       home: Scaffold(
+    //         backgroundColor: Colors.blue,
+    //         body: SafeArea(
+    //             child: Center(
+    //               child: Text(
+    //                 'Nemate pristup internetu. Molimo provjerite vašu konekciju!',
+    //                 textAlign: TextAlign.center,
+    //                 style: TextStyle(fontSize: 15, color: Colors.white),
+    //               ),
+    //             )),
+    //       ),
+    //     );
+    //   }
+    // });
   }
 }
 
